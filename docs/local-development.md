@@ -14,7 +14,9 @@ pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 ```
 
-## Architecture: Why the Dev Tunnel is Required
+## Supported deployment and the development-only tunnel
+
+Supported deployments use a publicly reachable, site-approved HTTPS Medusa Store API. Private-network and localhost endpoints are unsupported and deferred to upstream EmDash network-policy support. The tunnel is exclusively a local development/testing workaround, not a production deployment proxy.
 
 EmDash enforces strict SSRF protections in `createHttpAccess` for all plugin network traffic (both native and sandboxed plugins). It unconditionally rejects loopback and private network ranges (such as `127.0.0.1`, `localhost`, and RFC 1918 addresses), even if they are specified in `allowedHosts`. There is no supported opt-in to bypass private-host rejection.
 
@@ -119,6 +121,7 @@ pnpm lint            # Run oxlint checks
 pnpm format:check    # Check formatting with oxfmt and Prettier
 pnpm test            # Run unit tests
 pnpm package:check   # Validate package export paths and manifest
+pnpm package:consumer # Install local tarball into a clean temporary consumer and build it
 pnpm check           # Run all checks, tests, and build
 ```
 
@@ -148,6 +151,10 @@ The Docker tunnel launcher uses Linux host networking. On macOS/Windows, set `CL
 
 Astro 7 can automatically background itself when launched by an agent; `dev:site` uses its documented `--ignore-lock` flag to run in the foreground. Do not start two copies. During testing, an EmDash/Vite configuration hot reload left a closed module runner and broke content saves. A full stop/start of `pnpm dev:site` cleared it; this package does not patch that upstream behavior.
 
-The demo has no CMS commerce cache provider. Its single-product SSR lookups run once per block, so a slow Medusa backend adds render latency. The sample CTA `/products/:handle` is a placeholder; a real site must supply its product route or override the renderer. Default-region changes apply globally, not per visitor. Inventory is intentionally unmanaged in the fixture; checkout and stock validation are not exercised.
+The demo has no CMS commerce cache provider. Its single-product SSR lookups run once per block, so a slow Medusa backend adds render latency. The demo explicitly sets `productUrlTemplate: "/products/:handle"` for its placeholder route. The package has no default CTA; consuming sites configure their own relative/HTTPS template or omit it. Default-region changes apply globally, not per visitor. Inventory is intentionally unmanaged in the fixture; checkout and stock validation are not exercised.
 
 `dev:up` can be rerun without duplicating products or losing keys. The reset command preserves the EmDash `.local/content.db` and `.local/encryption.json`; rerun `dev:configure` to replace product IDs after reseeding. To reset content too, stop the site first and remove those files deliberately.
+
+To verify cards without a CTA, stop the normal dev site, then run `MEDUSA_DEMO_DISABLE_PRODUCT_LINKS=1 pnpm dev:site` and `MEDUSA_DEMO_DISABLE_PRODUCT_LINKS=1 pnpm test:e2e` in separate terminals. This development-only switch configures `productUrlTemplate: null`. The no-CTA screenshots/manifest are kept in ignored `.local/no-cta-screenshots`; the normal run keeps the four review screenshots in `docs/screenshots`.
+
+`pnpm package:consumer` requires the package to have been built (`pnpm build`); `pnpm check` performs that in order. It uses an actual tarball and a clean temporary directory outside the checkout, with frozen host dependencies and offline addition of the tarball. It compiles all four public package entries and checks declarations without a Medusa backend or tunnel. The temporary fixture is removed even on failure.

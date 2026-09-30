@@ -15,10 +15,10 @@ For detailed background, see the [Architecture Document](docs/architecture.md) a
 - **Clean References in Portable Text:** Editor documents store minimal references (`_type: "medusa-product"`, `productId`, `display`, `showPrice`). Product titles, handles, thumbnails, prices, and variant details remain owned by Medusa and are fetched on demand at SSR time.
 - **Storefront-Only Reads:** The plugin strictly interacts with Medusa v2 Store APIs (`/store/products`, `/store/regions`). **No Medusa Admin API secrets or credentials are accepted or stored in plugin settings.** Only publishable API keys (`pk_...`) linked to scoped sales channels are used.
 - **Server-Side Credential Isolation:** While Medusa publishable keys are nominally public, EmDash treats the configured key as a write-only secret stored encrypted at rest via `EMDASH_ENCRYPTION_KEY`. Storefront pages fetch product data via an in-process plugin SSR dispatcher route without exposing the publishable key or allowing direct client browser loopbacks.
-- **Product Picker Bounds:** The Portable Text editor dropdown selects from the first 100 products returned by the store. EmDash's block select does not support server-side search querying or pagination. A separate admin page allows keyword search (`q`) and region selection across the catalog.
+- **Product Picker Bounds:** The Portable Text editor dropdown selects from the first 100 products returned by the store. EmDash's block select does not support server-side search querying or pagination. A separate admin page allows keyword search (`q`) and region selection across the catalog. A remotely searchable/paginated block picker needs a supported EmDash extension or upstream contract in a future PR.
 - **Medusa v2 Pricing Semantics:** Prices in Medusa v2 are represented in major currency units (e.g. `24` for $24.00 USD, not `2400`). Displayed prices reflect a coherent currency and tax basis computed as the minimum variant price within an explicitly configured region.
 - **Scope & Honesty:** This plugin provides product reference embedding and display. **There is no checkout, shopping cart, or customer payment flow implemented in this slice.** Checkout and cart handling remain delegated to Medusa storefront applications.
-- **SSRF & Network Boundary:** EmDash core strictly blocks loopback and private network traffic (`127.0.0.1`, RFC 1918) for native and sandboxed plugins. This design protects production deployments but prevents connecting directly to local Medusa servers without an external HTTPS tunnel (see [docs/local-development.md](docs/local-development.md)).
+- **Supported Deployment:** The configured Medusa Store API must be reachable through public HTTPS and approved in the site's plugin configuration. Private-network and localhost Medusa endpoints are not supported under EmDash's network policy. The tunnel described in [local development](docs/local-development.md) is a development/testing workaround only.
 
 > **Runtime Plugin ID:** Note that the package name is `@blackswampai/emdash-plugin-medusa`, while the registered runtime plugin ID inside EmDash is `emdash-medusa`.
 
@@ -63,6 +63,8 @@ export default defineConfig({
 			plugins: [
 				medusaPlugin({
 					allowedOrigins: ["https://shop.example.com"],
+					// Optional: omit or set null to render cards without a CTA.
+					productUrlTemplate: "/catalog/:handle",
 				}),
 			],
 		}),
@@ -71,6 +73,16 @@ export default defineConfig({
 ```
 
 Use `medusaPlugin` in site configuration. The default `createPlugin` export is the runtime factory EmDash invokes internally. Configure `EMDASH_ENCRYPTION_KEY` in the host environment; see EmDash secret settings documentation.
+
+### Product links
+
+`productUrlTemplate?: string | null` is a site configuration option, not content or a secret setting. Omit it or use `null` to disable the CTA. Configure a root-relative route such as `/catalog/:handle` or an absolute HTTPS storefront URL such as `https://store.example.com/items/:handle`.
+
+A template must contain exactly one literal `:handle` in its path. The runtime replaces only that token with the encoded Medusa handle. Missing/unrepresentable handles produce no CTA. Query strings, fragments, credentials, scheme-relative URLs, unsafe protocols, whitespace/backslashes, dot segments and other template tokens are rejected when both descriptor and runtime are created. There is no default `/products/:handle` convention; the demo explicitly opts into its own route.
+
+### Operational diagnostics
+
+The public product route returns a normalized product or `null`; it never returns backend error codes/messages. Visitors see **Product unavailable** for missing products and temporary failures. Server operators can use EmDash plugin logs: failures warn with a stable code and validated product ID only (`CONFIGURATION`, `AUTHENTICATION`, `NETWORK`, `TIMEOUT`, `INVALID_RESPONSE`, `REQUEST`, or `UNAVAILABLE`). Missing/deleted products use debug-level `NOT_FOUND`, without a warning. No key, upstream body, request headers, raw exception or backend URL is logged by this handler. EmDash controls log routing/retention. If its public dispatcher is absent or fails before invoking the plugin, the renderer still falls back safely, but no plugin-context log can be emitted.
 
 ### Source-Only Admin and Astro Exports
 
@@ -91,7 +103,7 @@ Once configured in `astro.config.mjs`, open **Plugins → Medusa → Connection 
 
 ## Development & Testing
 
-See [docs/local-development.md](docs/local-development.md) for the complete guide. Quick reference:
+See [docs/local-development.md](docs/local-development.md) for the complete guide. `pnpm check` includes a clean installed-tarball consumer build; it does not publish anything. Quick reference:
 
 ```bash
 # Install dependencies & Playwright browser

@@ -1,6 +1,6 @@
 # Decision and evidence
 
-The first slice is viable for a small catalog served by a public HTTPS Medusa backend. Proceed with a focused picker/context PR, rather than committing to cart/checkout scope. Private-network Medusa hosting and a polished large-catalog picker remain architectural decisions. This package is unpublished and is not a production rollout.
+The first slice is viable for a small catalog served by a public HTTPS Medusa backend. Proceed with a focused picker/context PR, rather than committing to cart/checkout scope. Public HTTPS Medusa is the supported deployment model. Private-network hosting is deferred to upstream EmDash policy support; a polished large-catalog picker remains future work. This package is unpublished and is not a production rollout.
 
 ## Answers to the twelve questions
 
@@ -48,8 +48,8 @@ Primary source references: [product validation](https://github.com/medusajs/medu
 
 ## Workarounds and remaining unknowns
 
-The development tunnel is the only networking workaround; its fixed gateway exposes three read-only Store paths and cannot proxy Admin/auth. It adds an external dependency to browser tests. Unit and real Store tests use no external hosted service, and CI never starts the tunnel. The dev site uses explicit local entry paths instead of an installed package, following the same descriptor/component contracts. Packaging checks validate exports and tarball contents, but an independent consuming-site install from a published tarball is still a release gate.
+The development tunnel is the only networking workaround; its fixed gateway exposes three read-only Store paths and cannot proxy Admin/auth. It adds an external dependency to browser tests. Unit and real Store tests use no external hosted service, and CI never starts the tunnel. The dev site uses explicit local entry paths instead of an installed package, following the same descriptor/component contracts. Automated packaging checks install a locally packed tarball into a clean temporary consumer and validate public entry imports, types and Astro build; no source-local plugin entries are used in that check. Publishing remains out of scope.
 
-The minimal renderer fixes locale formatting to en-US, uses a site-owned `/products/:handle` CTA and performs one uncached request per block. There is no rich picker, visitor region island, cache invalidation, rate limiting, localization polish, inventory demonstration or deployed production smoke test. None of checkout, orders, customers, product/inventory editing, payments, fulfillment, refunds, synchronization, webhooks or a Medusa-side plugin is included.
+The minimal renderer fixes locale formatting to en-US, uses an optional site-configured product link (disabled by default) and performs one uncached request per block. There is no rich picker, visitor region island, cache invalidation, rate limiting, localization polish, inventory demonstration or deployed production smoke test. None of checkout, orders, customers, product/inventory editing, payments, fulfillment, refunds, synchronization, webhooks or a Medusa-side plugin is included.
 
-Next PR: establish supported query/pagination in the authoring picker, define visitor commerce context and batched SSR reads, and decide public versus private backend deployment. Keep cart work behind those decisions.
+Next PR: establish supported query/pagination in the authoring picker, define visitor commerce context and batched SSR reads, while keeping public HTTPS as the supported backend deployment. Keep cart work behind those decisions.
