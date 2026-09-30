@@ -1,0 +1,94 @@
+---
+import { getPublicPluginApiRouteHandler } from "emdash/plugin-utils";
+import { parseProductBlock } from "../block";
+import { loadProduct } from "./load-product";
+
+interface Props {
+	node: unknown;
+}
+const block = parseProductBlock(Astro.props.node);
+const product = block
+	? await loadProduct(block.productId, Astro.url, getPublicPluginApiRouteHandler(Astro.locals))
+	: null;
+let formattedPrice: string | null = null;
+if (product?.price) {
+	try {
+		formattedPrice = new Intl.NumberFormat("en-US", {
+			style: "currency",
+			currency: product.price.currencyCode,
+		}).format(product.price.amount);
+	} catch {
+		/* Unavailable currency. */
+	}
+}
+let thumbnail: string | null = null;
+if (product?.thumbnail) {
+	try {
+		const url = new URL(product.thumbnail);
+		if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password)
+			thumbnail = url.href;
+	} catch {
+		/* Invalid image. */
+	}
+}
+const href = product?.href ?? null;
+---
+
+{
+	product ? (
+		<article
+			class:list={[
+				"medusa-product-card",
+				block?.display === "featured" && "medusa-product-featured",
+			]}
+			data-medusa-product-id={product.id}
+		>
+			{thumbnail && (
+				<img src={thumbnail} alt={product.title} loading="lazy" width="240" height="200" />
+			)}
+			<div>
+				<h3>{product.title}</h3>
+				{block?.showPrice && (
+					<p class="medusa-product-price">
+						{formattedPrice ? `From ${formattedPrice}` : "Price unavailable"}
+					</p>
+				)}
+				{href && <a href={href}>View product</a>}
+			</div>
+		</article>
+	) : (
+		<aside class="medusa-product-unavailable" data-medusa-product-empty>
+			<p>Product unavailable</p>
+		</aside>
+	)
+}
+<style>
+	.medusa-product-card {
+		border: 1px solid #d2d8cf;
+		border-radius: 16px;
+		padding: 24px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 24px;
+		margin: 24px 0;
+		background: #fff;
+	}
+	.medusa-product-card img {
+		max-width: 100%;
+		object-fit: contain;
+	}
+	.medusa-product-featured {
+		padding: 40px;
+	}
+	h3 {
+		margin: 0 0 12px;
+	}
+	a {
+		display: inline-block;
+		color: #244f37;
+	}
+	.medusa-product-unavailable {
+		padding: 24px;
+		background: #f4f5f2;
+	}
+</style>

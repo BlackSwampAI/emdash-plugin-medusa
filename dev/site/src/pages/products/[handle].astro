@@ -1,0 +1,16 @@
+---
+// Proof-of-concept CTA destination. A real host supplies its existing storefront route.
+const { handle } = Astro.params;
+---
+
+<!doctype html>
+<html lang="en">
+	<head><title>Medusa product link</title></head><body
+		><main>
+			<h1>{handle}</h1><p>
+				The block link reaches the host's product route. Cart and checkout are outside this proof of
+				concept.
+			</p><a href="/">Back to content</a>
+		</main></body
+	>
+</html>

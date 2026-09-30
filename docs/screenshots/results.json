@@ -1,0 +1,15 @@
+{
+	"checks": 8,
+	"scenarios": [
+		"connection diagnostics and no key in DOM",
+		"native admin Store search",
+		"USD to EUR region pricing",
+		"editor selection and reference-only serialization",
+		"valid live SSR product",
+		"unpriced product",
+		"site-configured product CTA",
+		"deleted product and browser boundary"
+	],
+	"emdash": "1.0.1",
+	"medusa": "2.21.2"
+}

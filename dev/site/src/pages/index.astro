@@ -1,0 +1,70 @@
+---
+import { getEmDashEntry } from "emdash";
+import { PortableText } from "emdash/ui";
+
+const { entry } = await getEmDashEntry("pages", "medusa-demo");
+---
+
+<!doctype html>
+<html lang="en">
+	<head
+		><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>
+			Black Swamp AI · Medusa + EmDash
+		</title></head
+	>
+	<body
+		><main>
+			<p class="eyebrow">BLACK SWAMP AI / INTEGRATION LAB</p>
+			<h1>Commerce in Medusa.<br />Content in EmDash.</h1>
+			<p>
+				The product cards below resolve stable content references against the current Store API
+				during SSR.
+			</p>
+			{
+				entry ? (
+					<PortableText value={entry.data.content ?? []} />
+				) : (
+					<p>
+						Run <code>pnpm dev:configure</code> after starting the tunnel and site.
+					</p>
+				)
+			}
+			<nav>
+				<a href="/_emdash/admin/plugins/emdash-medusa">Medusa connection and catalog</a> · <a
+					href="/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+					>Local development admin login</a
+				>
+			</nav>
+		</main></body
+	>
+</html>
+<style is:global>
+	body {
+		margin: 0;
+		background: #f3f5ee;
+		color: #1c3026;
+		font-family: system-ui, sans-serif;
+		line-height: 1.6;
+	}
+	main {
+		max-width: 1000px;
+		margin: 64px auto;
+		padding: 24px;
+	}
+	h1 {
+		font-size: clamp(32px, 6vw, 60px);
+		line-height: 1.1;
+		letter-spacing: -0.04em;
+	}
+	.eyebrow {
+		font-size: 13px;
+		letter-spacing: 0.12em;
+		color: #5e705e;
+	}
+	a {
+		color: #244f37;
+	}
+	nav {
+		margin-top: 40px;
+	}
+</style>
