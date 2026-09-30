@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+.env*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+.local/
+coverage/
+playwright-report/
+test-results/
