@@ -9,6 +9,7 @@
 	"dependencies": {
 		"@astrojs/node": "11.1.6",
 		"@astrojs/react": "7.0.0",
+		"@blackswampai/emdash-plugin-medusa": "file:./emdash-plugin-medusa.tgz",
 		"@cloudflare/kumo": "2.14.0",
 		"astro": "7.3.5",
 		"emdash": "1.0.1",

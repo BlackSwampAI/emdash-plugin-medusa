@@ -1,4 +1,4 @@
-import { mkdtemp, cp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -10,8 +10,8 @@ const started = performance.now();
 const temp = await mkdtemp(join(tmpdir(), "emdash-medusa-consumer-"));
 const packDir = join(temp, "pack");
 const consumer = join(temp, "consumer");
-const run = (command, args, cwd) =>
-	execFileSync(command, args, { cwd, stdio: "inherit", env: process.env });
+const run = (command, args, cwd, env = process.env) =>
+	execFileSync(command, args, { cwd, stdio: "inherit", env });
 
 try {
 	await mkdir(packDir);
@@ -24,6 +24,12 @@ try {
 			env: npmEnv,
 		}),
 	)[0];
+	if (
+		packed.name !== "@blackswampai/emdash-plugin-medusa" ||
+		packed.version !== "0.1.0" ||
+		!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(packed.integrity)
+	)
+		throw new Error("npm pack returned unexpected plugin package metadata.");
 	const tarball = join(packDir, basename(packed.filename));
 	for (const file of [
 		"package.json",
@@ -54,18 +60,16 @@ try {
 			throw new Error(`Tarball is missing required consumer file: ${required}`);
 	}
 
-	run("pnpm", ["install", "--frozen-lockfile"], consumer);
-	run(
-		"pnpm",
-		[
-			"add",
-			"--offline",
-			"--ignore-scripts",
-			"--config.auto-install-peers=false",
-			"./emdash-plugin-medusa.tgz",
-		],
-		consumer,
-	);
+	const consumerLock = join(consumer, "pnpm-lock.yaml");
+	const lockText = await readFile(consumerLock, "utf8");
+	const marker = "TARBALL_INTEGRITY";
+	if (lockText.split(marker).length !== 2)
+		throw new Error("The fixture lockfile must contain exactly one tarball integrity marker.");
+	await writeFile(consumerLock, lockText.replace(marker, packed.integrity));
+	run("pnpm", ["install", "--frozen-lockfile"], consumer, {
+		...process.env,
+		npm_config_cache_dir: join(temp, "empty-pnpm-cache"),
+	});
 	run(
 		"node",
 		[
