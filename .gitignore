@@ -12,3 +12,4 @@ playwright-report/
 test-results/
 .gemini/
 emdash-env.d.ts
+.emdash/
