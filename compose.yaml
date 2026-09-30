@@ -1,0 +1,50 @@
+name: emdash-plugin-medusa-dev
+x-medusa-env: &medusa-env
+    DATABASE_URL: postgres://medusa:medusa-local-only@postgres:5432/medusa?sslmode=disable
+    JWT_SECRET: local-fixture-jwt-never-use-in-production
+    COOKIE_SECRET: local-fixture-cookie-never-use-in-production
+    MEDUSA_DB_MIGRATION_CONNECTION_TIMEOUT: "120000"
+services:
+    postgres:
+        image: postgres:17-alpine
+        environment:
+            POSTGRES_USER: medusa
+            POSTGRES_PASSWORD: medusa-local-only
+            POSTGRES_DB: medusa
+        volumes:
+            - medusa-db:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U medusa -d medusa"]
+            interval: 3s
+            timeout: 3s
+            retries: 30
+    migrate:
+        build: ./dev/medusa
+        command: ["npx", "medusa", "db:migrate"]
+        restart: "no"
+        environment: *medusa-env
+        depends_on:
+            postgres:
+                condition: service_healthy
+    medusa:
+        build: ./dev/medusa
+        environment: *medusa-env
+        depends_on:
+            migrate:
+                condition: service_completed_successfully
+        ports:
+            - "127.0.0.1:19000:19000"
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://127.0.0.1:19000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 60
+            start_period: 60s
+volumes:
+    medusa-db:

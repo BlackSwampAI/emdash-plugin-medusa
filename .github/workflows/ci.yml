@@ -1,0 +1,34 @@
+name: CI
+on:
+    push:
+        branches: [main]
+    pull_request:
+permissions:
+    contents: read
+jobs:
+    checks:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm check
+            - run: pnpm exec astro build --root dev/site
+    medusa:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm dev:up
+            - run: pnpm test:integration
+            - if: always()
+              run: pnpm dev:down
