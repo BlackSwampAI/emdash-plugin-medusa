@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 import { chromium } from "playwright";
 import { configureSite, siteUrl } from "./dev-configure.mjs";
 
-const artifacts = resolve(import.meta.dirname, "../docs/screenshots");
+const linksDisabled = process.env.MEDUSA_DEMO_DISABLE_PRODUCT_LINKS === "1";
+const artifacts = resolve(
+	import.meta.dirname,
+	linksDisabled ? "../.local/no-cta-screenshots" : "../docs/screenshots",
+);
 await mkdir(artifacts, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 let checks = 0;
@@ -78,6 +82,19 @@ try {
 		/Price unavailable/,
 	);
 	checks++;
+	const productLinks = storefront.locator("[data-medusa-product-id] a");
+	if (linksDisabled) {
+		assert.equal(await productLinks.count(), 0);
+	} else {
+		assert.equal(await productLinks.count(), 3);
+		assert.equal(
+			await storefront
+				.locator(`[data-medusa-product-id="${fixture.productIds[0]}"] a`)
+				.getAttribute("href"),
+			"/products/lab-hoodie",
+		);
+	}
+	checks++;
 	assert.equal(await storefront.locator("[data-medusa-product-empty]").count(), 1);
 	assert(!(await storefront.content()).includes(fixture.publishableKey));
 	assert.deepEqual(errors, []);
@@ -98,16 +115,19 @@ try {
 					"editor selection and reference-only serialization",
 					"valid live SSR product",
 					"unpriced product",
+					linksDisabled ? "disabled product CTA" : "site-configured product CTA",
 					"deleted product and browser boundary",
 				],
 				emdash: "1.0.1",
 				medusa: "2.21.2",
 			},
 			null,
-			2,
+			"\t",
 		) + "\n",
 	);
-	console.log(`${checks} browser scenarios passed; four screenshots in docs/screenshots.`);
+	console.log(
+		`${checks} browser scenarios passed; four screenshots in ${linksDisabled ? ".local/no-cta-screenshots" : "docs/screenshots"}.`,
+	);
 } finally {
 	await browser.close();
 }

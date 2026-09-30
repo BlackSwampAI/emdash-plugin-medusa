@@ -55,6 +55,20 @@ describe("SSR product loader", () => {
 			product: { id: "prod_x", title: "Live", price: { amount: 12.5, currencyCode: "usd" } },
 		},
 	};
+	it.each([
+		"javascript:alert(1)",
+		"//evil.example.test/product",
+		"https://user:secret@example.test/product",
+	])("drops an unsafe href at the Astro dispatcher boundary: %s", async (href) => {
+		const payload = {
+			...success,
+			data: { ...success.data, product: { ...success.data.product, href } },
+		};
+		expect(await loadProduct("prod_x", base, async () => payload as never)).toMatchObject({
+			id: "prod_x",
+			href: null,
+		});
+	});
 	it("dispatches the encoded product route in-process and accepts a live result", async () => {
 		const dispatch = vi.fn(async (..._args: unknown[]) => success);
 		await expect(loadProduct("prod_x", base, dispatch as never)).resolves.toMatchObject({

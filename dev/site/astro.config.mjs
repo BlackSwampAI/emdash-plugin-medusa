@@ -17,7 +17,11 @@ const tunnel = existsSync(tunnelFile)
 const envFile = new URL(".local/encryption.json", root);
 if (existsSync(envFile))
 	process.env.EMDASH_ENCRYPTION_KEY = JSON.parse(readFileSync(envFile, "utf8")).key;
-const descriptor = medusaPlugin({ allowedOrigins: [tunnel.backendUrl] });
+const descriptor = medusaPlugin({
+	allowedOrigins: [tunnel.backendUrl],
+	productUrlTemplate:
+		process.env.MEDUSA_DEMO_DISABLE_PRODUCT_LINKS === "1" ? null : "/products/:handle",
+});
 
 export default defineConfig({
 	output: "server",
@@ -27,7 +31,9 @@ export default defineConfig({
 	integrations: [
 		react(),
 		emdash({
-			database: sqlite({ url: `file:${fileURLToPath(new URL(".local/content.db", root))}` }),
+			database: sqlite({
+				url: `file:${fileURLToPath(new URL(".local/content.db", root))}`,
+			}),
 			plugins: [
 				{
 					...descriptor,

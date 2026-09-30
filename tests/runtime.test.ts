@@ -83,7 +83,7 @@ afterEach(async () => {
 	);
 });
 
-describe.sequential("native EmDash integration", () => {
+describe("native EmDash integration", () => {
 	it("encrypts the publishable key at rest and omits it from settings GET and route responses", async () => {
 		vi.stubEnv("EMDASH_ENCRYPTION_KEY", ENC_KEY);
 		const runtime = await makeRuntime();
@@ -144,6 +144,32 @@ describe.sequential("native EmDash integration", () => {
 		expect(privateWrongRole.status).toBe(403);
 		const publicResponse = await dispatch(runtime, "/product?productId=invalid", "GET");
 		expect(publicResponse.headers.get("cache-control")).toContain("no-store");
+	});
+
+	it("keeps host network-policy diagnostics out of the public response and console warning", async () => {
+		vi.stubEnv("EMDASH_ENCRYPTION_KEY", ENC_KEY);
+		const runtime = await makeRuntime();
+		const plugin = runtime.configuredPlugins.find((p) => p.id === "emdash-medusa")!;
+		await handlePluginSettingsUpdate(runtime.db, plugin.id, plugin.admin!.settingsSchema!, {
+			backendUrl: ORIGIN,
+			publishableKey: SECRET,
+		});
+		const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		const response = await dispatch(runtime, "/product?productId=prod_network-policy", "GET");
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data).toEqual({ ok: true, product: null });
+		expect(JSON.stringify(body)).not.toContain(SECRET);
+		expect(JSON.stringify(body)).not.toMatch(/error|message|status/i);
+		expect(consoleWarn).toHaveBeenCalledWith(
+			"[plugin:emdash-medusa]",
+			"Medusa product lookup failed.",
+			{ code: "NETWORK", productId: "prod_network-policy" },
+		);
+		expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(SECRET);
+		expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(ORIGIN);
 	});
 
 	it("fails closed if secret encryption is unavailable", async () => {

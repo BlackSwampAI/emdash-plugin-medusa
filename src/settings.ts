@@ -6,6 +6,8 @@ import type { MedusaClientConfig } from "./medusa/types";
 export interface MedusaPluginOptions {
 	/** Exact HTTPS backend origins approved by the site developer, without wildcards. */
 	allowedOrigins: string[];
+	/** Storefront product URL template. Omit or set null to disable product links. */
+	productUrlTemplate?: string | null;
 }
 
 export const settingsSchema: Record<string, SettingField> = {

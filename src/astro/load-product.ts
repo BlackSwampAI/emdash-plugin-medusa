@@ -1,4 +1,5 @@
 import type { PublicPluginApiRouteHandler } from "emdash/plugin-utils";
+import { isSafeProductHref } from "../product-url";
 
 export interface NormalizedPrice {
 	amount: number;
@@ -9,6 +10,7 @@ export interface NormalizedPrice {
 export interface NormalizedProduct {
 	id: string;
 	title: string;
+	href: string | null;
 	handle?: string;
 	thumbnail?: string | null;
 	variantsCount?: number;
@@ -59,6 +61,7 @@ function validateProduct(value: unknown): NormalizedProduct | null {
 	const product: NormalizedProduct = {
 		id: value.id,
 		title: value.title,
+		href: isSafeProductHref(value.href) ? value.href : null,
 	};
 
 	if (typeof value.handle === "string") {

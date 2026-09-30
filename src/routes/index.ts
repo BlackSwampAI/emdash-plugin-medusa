@@ -2,6 +2,7 @@ import type { PluginRoute, RouteContext } from "emdash";
 
 import { createMedusaClient } from "../medusa/client";
 import { MedusaError } from "../medusa/errors";
+import { productUrlForHandle } from "../product-url";
 import { readSettings } from "../settings";
 
 function record(value: unknown): Record<string, unknown> {
@@ -19,7 +20,10 @@ function integer(value: unknown, fallback: number, maximum: number): number {
 	return value;
 }
 
-export function createRoutes(origins: string[]): Record<string, PluginRoute> {
+export function createRoutes(
+	origins: string[],
+	productUrlTemplate: string | null = null,
+): Record<string, PluginRoute> {
 	const run =
 		(
 			fn: (
@@ -133,15 +137,51 @@ export function createRoutes(origins: string[]): Record<string, PluginRoute> {
 			public: true,
 			methods: ["GET"],
 			request: { body: "none" },
-			handler: run(async (ctx, client) => {
-				const input = record(ctx.input);
-				if (
-					typeof input.productId !== "string" ||
-					!/^prod_[A-Za-z0-9_-]{1,120}$/.test(input.productId)
-				)
-					throw new MedusaError("INPUT", "A valid Medusa product ID is required.");
-				return { product: await client.getProduct(input.productId) };
-			}),
+			handler: async (ctx) => {
+				const input = ctx.input;
+				if (typeof input !== "object" || input === null || Array.isArray(input))
+					return { ok: true, product: null };
+				const productId = (input as Record<string, unknown>).productId;
+				if (typeof productId !== "string" || !/^prod_[A-Za-z0-9_-]{1,120}$/.test(productId))
+					return { ok: true, product: null };
+				try {
+					let config: Awaited<ReturnType<typeof readSettings>>;
+					try {
+						config = await readSettings(ctx, origins);
+					} catch {
+						throw new MedusaError("CONFIGURATION", "Medusa settings are unavailable.");
+					}
+					if (!ctx.http)
+						throw new MedusaError(
+							"CONFIGURATION",
+							"EmDash network access is unavailable.",
+						);
+					const client = createMedusaClient(config, (url, init) =>
+						ctx.http!.fetch(url, init),
+					);
+					const product = await client.getProduct(productId);
+					if (!product) {
+						ctx.log.debug("Medusa product unavailable.", {
+							code: "NOT_FOUND",
+							productId,
+						});
+						return { ok: true, product: null };
+					}
+					return {
+						ok: true,
+						product: {
+							...product,
+							href: productUrlForHandle(productUrlTemplate, product.handle),
+						},
+					};
+				} catch (error) {
+					ctx.log.warn("Medusa product lookup failed.", {
+						code: error instanceof MedusaError ? error.code : "UNAVAILABLE",
+						productId,
+					});
+					return { ok: true, product: null };
+				}
+			},
 		},
 	};
 }

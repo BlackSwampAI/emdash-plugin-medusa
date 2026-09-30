@@ -31,7 +31,7 @@ if (product?.thumbnail) {
 		/* Invalid image. */
 	}
 }
-const href = product?.handle ? `/products/${encodeURIComponent(product.handle)}` : null;
+const href = product?.href ?? null;
 ---
 
 {
